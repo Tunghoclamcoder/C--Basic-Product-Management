@@ -1,0 +1,55 @@
+﻿@inherits LayoutComponentBase
+@using BlazorBootstrap
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using BlazorManagement.Data
+@inject NavigationManager NavigationManager
+
+<PageTitle>Products Management Blazor</PageTitle>
+
+<div class="bb-page">
+
+    <Sidebar @ref="sidebar"
+        IconName="IconName.BootstrapFill"
+             ImageSrc="/image/logo/GundamStore.jpg"
+             Title="Gundam Store"
+             DataProvider="SidebarDataProvider" />
+
+    <main>
+        <div class="bb-top-row px-4 d-flex justify-content-end">
+            <a href="https://docs.microsoft.com/aspnet/ m" target="_blank">About</a>
+        </div>
+
+        <article class="content px-4">
+            <div class="py-2">
+                @Body
+            </div>
+        </article>
+    </main>
+
+</div>
+
+@code {
+    private Sidebar sidebar = default!;
+    private IEnumerable<NavItem> navItems = default!;
+
+    private async Task<SidebarDataProviderResult> SidebarDataProvider(SidebarDataProviderRequest request)
+    {
+        if (navItems is null)
+            navItems = GetNavItems();
+
+        return await Task.FromResult(request.ApplyTo(navItems));
+    }
+
+    private IEnumerable<NavItem> GetNavItems()
+    {
+        navItems = new List<NavItem>
+        {
+            new NavItem { Id = "1", Href = "/", IconName = IconName.HouseDoorFill, Text = "Home", Match=NavLinkMatch.All},
+            new NavItem { Id = "2", Href = "/brands", IconName = IconName.Grid1X2, Text = "Brands"},
+            new NavItem { Id = "3", Href = "/products", IconName = IconName.Gift, Text = "Products"},
+        };
+
+        return navItems;
+    }
+}

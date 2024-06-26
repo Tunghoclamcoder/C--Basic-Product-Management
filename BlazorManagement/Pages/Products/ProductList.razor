@@ -1,0 +1,231 @@
+﻿@page "/products"
+@using BlazorManagement.Data
+@using MySql.Data.MySqlClient;
+@inject NavigationManager NavigationManager
+
+<PageTitle>Product Management</PageTitle>
+
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <h3>Product List</h3>
+    <a href="/products/create" class="btn btn-primary rounded-5"><Icon Name="IconName.PlusCircleDotted" /> Adding a new Product</a>
+</div>
+
+<Grid TItem="Products"
+      Class="table table-bordered align-middle text-center"
+      DataProvider="ProductDataProvider"
+      AllowFiltering="false"
+      AllowPaging="true"
+      PageSize="5"
+      AllowSorting="true"
+      AllowSelection="false"
+      Responsive="true"
+      ItemsPerPageText="5"
+      PageSizeSelectorItems="new int[] { 5, 10, 20 }"
+      PaginationItemsTextFormat="{0} - {1} of {2} items">
+
+    <GridColumn TItem="Products" HeaderText="ProductId" PropertyName="ProductId" SortKeySelector="item => item.ProductId"
+        Class="align-middle text-center">
+        <div class="d-flex justify-content-center align-items-center h-100  align-middle">
+            @context.ProductId
+        </div>
+    </GridColumn>
+
+    <GridColumn TItem="Products" HeaderText="Product Name" PropertyName="ProductName" SortKeySelector="item => item.ProductName"
+        Class="align-middle text-center">
+        <div class="d-flex justify-content-center align-items-center h-100  align-middle">
+            @if(context.Image != "")
+            {
+                <img src="@context.Image" class="me-3" style="max-width: 120px" />
+            } else
+            {
+                <img src="uploads/animeGirl.jpg" class="me-3 rounded-3" style="max-width: 120px" />
+            }
+            @context.ProductName
+        </div>
+    </GridColumn>
+
+    <GridColumn TItem="Products" HeaderText="Quantity" PropertyName="Quantity" SortKeySelector="item => item.Quantity" Class="align-middle text-center">
+        <div class="d-flex justify-content-center align-items-center h-100  align-middle">
+            @context.Quantity
+        </div>
+    </GridColumn>
+
+    <GridColumn TItem="Products" HeaderText="Description" PropertyName="Description" SortKeySelector="item => item.Description" Class="align-middle text-center">
+        <div class="d-flex justify-content-center align-items-center h-100  align-middle">
+            @context.Description
+        </div>
+    </GridColumn>
+
+    <GridColumn TItem="Products" HeaderText="Price" PropertyName="Price" SortKeySelector="item => item.Price" Class="align-middle text-center">
+        <div class="d-flex justify-content-center align-items-center h-100 text-success  align-middle">
+            $@context.Price
+        </div>
+    </GridColumn>
+
+    <GridColumn TItem="Products" HeaderText="Brand" PropertyName="BrandId" SortKeySelector="item => item.BrandId" Class="align-middle text-center">
+        <div class="d-flex justify-content-center align-items-center h-100  align-middle">
+            @{
+                try
+                {
+                    string SqlGetBrand = String.Format($"SELECT * FROM brands WHERE brand_id = {context.BrandId}");
+                    MySqlConnection conn1 = DBMySQL.GetMySqlConnection();
+                    MySqlCommand cmd1 = conn1.CreateCommand();
+                    conn1.Open();
+                    cmd1.CommandText = SqlGetBrand;
+                    MySqlDataReader mySqlDataReader1 = cmd1.ExecuteReader();
+                    while (mySqlDataReader1.Read())
+                    {
+                        BId = mySqlDataReader1.GetInt32("brand_id");
+                        BName = mySqlDataReader1.GetString("brand_name");
+                    }
+                    conn1.Close();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+            }
+            @if (BName != "" && BName != null && context.BrandId != 0)
+            {
+                @BName
+            }
+        </div>
+    </GridColumn>
+    <GridColumn TItem="Products" HeaderText="Status" PropertyName="Status" SortKeySelector="item => item.Status" Class="align-middle text-center">
+        <div class="d-flex justify-content-center align-items-center h-100  align-middle">
+            @if (context.Status == 0)
+            {
+                <div class="badge bg-success rounded-5">
+                    <Icon Name="IconName.CheckCircle" /> Are Trading
+                </div>
+            }
+            else
+            {
+                <div class="badge bg-danger rounded-5">
+                    <Icon Name="IconName.XCircle" /> Stop Trading
+                </div>
+            }
+        </div>
+    </GridColumn>
+    <GridColumn TItem="Products" HeaderText="Action" Class="align-middle text-center">
+        <div class="d-flex justify-content-evenly align-items-center">
+            <Button Type="ButtonType.Link" Color="ButtonColor.Info" To=@($"/products/show/{@context.ProductId}") Class="rounded-5">
+                <Icon Name="IconName.Eye" /> View
+            </Button>
+            <Button Type="ButtonType.Link" Color="ButtonColor.Warning" To=@($"/products/edit/{@context.ProductId}") Class="rounded-5">
+                <Icon Name="IconName.PencilSquare" /> Edit
+            </Button>
+            @if (context.Status == 0)
+            {
+                <button class="btn btn-danger rounded-5" @onclick="() => DeleteProducts(context.ProductId)"><Icon Name="IconName.Trash3" /> Delete</button>
+
+            } else {
+            <button class="btn btn-danger rounded-5 disabled" disabled><Icon Name="IconName.Trash3" /> Delete</button>
+            }
+        </div>
+    </GridColumn>
+</Grid>
+
+@code {
+    private int BId;
+    private string BName;
+
+    private IEnumerable<Products> products = default!;
+
+    private HashSet<Products> selectedProducts = new();
+
+    private async Task<GridDataProviderResult<Products>> ProductDataProvider(GridDataProviderRequest<Products> request)
+    {
+        if (products is null) // pull employees only one time for client-side filtering, sorting, and paging
+            products = GetProducts(); // call a service or an API to pull the employees
+
+        return await Task.FromResult(request.ApplyTo(products));
+    }
+
+    private IEnumerable<Products> GetProducts()
+    {
+        List<Products> list = new List<Products>();
+
+        try
+        {
+            string sqlGetProducts = "SELECT * FROM products";
+
+            using (MySqlConnection conn = DBMySQL.GetMySqlConnection())
+            {
+                conn.Open();
+
+                using (MySqlCommand cmd = new MySqlCommand(sqlGetProducts, conn))
+                {
+                    using (MySqlDataReader mySqlDataReader = cmd.ExecuteReader())
+                    {
+                        while (mySqlDataReader.Read())
+                        {
+                            int ProductId = mySqlDataReader.GetInt32("product_id");
+                            string ProductName = mySqlDataReader.GetString("product_name");
+                            int Quantity = mySqlDataReader.GetInt32("quantity");
+                            float Price = mySqlDataReader.GetFloat("price");
+                            int BrandId = mySqlDataReader.GetInt32("brand_id");
+                            string Description = mySqlDataReader.GetString("description");
+                            string Image = mySqlDataReader.GetString("image");
+                            int Status = mySqlDataReader.GetInt32("status");
+
+                            Products product = new Products(ProductId, ProductName, Price, BrandId, Image, Quantity, Status, Description);
+                            list.Add(product);
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
+
+        return list;
+    }
+
+
+    private Task OnSelectedItemsChanged(HashSet<Products> products)
+    {
+        selectedProducts = products is not null && products.Any() ? products : new();
+        return Task.CompletedTask;
+    }
+
+    private void DeleteProducts(int ProductId)
+    {
+        var conn = DBMySQL.GetMySqlConnection();
+        try
+        {
+            // find
+            conn.Open();
+
+            string SqlGetProducts = $"SELECT * FROM products WHERE product_id = {ProductId}";
+            MySqlCommand cmd = conn.CreateCommand();
+            cmd.CommandText = SqlGetProducts;
+            MySqlDataReader mySqlDataReader = cmd.ExecuteReader();
+            if (mySqlDataReader.Read())
+            {
+                // delete
+                var conn2 = DBMySQL.GetMySqlConnection();
+                try
+                {
+                    conn2.Open();
+                    string SqlDelete = $"UPDATE products SET status = 1 WHERE product_id = {ProductId}";
+                    MySqlCommand cmd2 = new MySqlCommand(SqlDelete, conn2);
+                    cmd2.ExecuteNonQuery();
+                    conn2.Close();
+                } catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+            } 
+
+            conn.Close();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
+        NavigationManager.NavigateTo("/products", forceLoad: true);
+    }
+}

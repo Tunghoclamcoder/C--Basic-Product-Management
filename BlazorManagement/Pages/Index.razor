@@ -1,0 +1,175 @@
+﻿@page "/"
+@using BlazorManagement.Data
+@using MySql.Data.MySqlClient
+@using BlazorBootstrap
+@inject NavigationManager NavigationManager
+
+
+<PageTitle>Admin - Home</PageTitle>
+
+<h1 class="text-center mb-4 text-warning">
+    
+</h1>
+
+<div class="mb-4 text-center text-danger">
+    Gundam Store Management
+</div>
+
+@* <div class="row">
+    <div class="col-6">
+        <div>
+            <div class="text-center">
+                <h4 class="text-info">Product left in stock</h4>
+            </div>
+            <Grid TItem="ProductsQuantity"
+              Class="table table-bordered table-striped align-middle text-center"
+              DataProvider="ProductsQuantityDataProvider"
+              AllowFiltering="false"
+              AllowPaging="true"
+              PageSize="5"
+              AllowSorting="true"
+              AllowSelection="false"
+              Responsive="true"
+              ItemsPerPageText="5"
+              PageSizeSelectorItems="new int[] { 5, 1   0, 20 }"
+              PaginationItemsTextFormat="{0} - {1} of {2} items">
+
+    <GridColumn TItem="ProductsQuantity" HeaderText="Product name" PropertyName="ProductName" SortKeySelector="item => item.ProductName"
+        Class="align-middle text-center">
+         <div class="d-flex justify-content-center align-items-center">
+         @context.ProductName
+        </div>
+    </GridColumn>
+    <GridColumn TItem="ProductsQuantity" HeaderText="Left in stock" PropertyName="Quantity" SortKeySelector="item => item.Quantity"
+        Class="align-middle text-center">
+        <div class="d-flex justify-content-center align-items-center text-danger">
+         @context.Quantity
+        </div>
+    </GridColumn>   
+
+</Grid>
+        </div>
+    </div>
+
+    <div class="col-6">
+        <div>
+            <div class="text-center">
+                <h4 class="text-success">Product quantity by Brand</h4>
+            </div>
+            <Grid TItem="BrandsQuantity"
+                  Class="table table-bordered table-striped align-middle text-center"
+                  DataProvider="BrandsQuantityDataProvider"
+                  AllowFiltering="false"
+                  AllowPaging="true"
+                  PageSize="5"
+                  AllowSorting="true"
+                  AllowSelection="false"
+                  Responsive="true"
+                  ItemsPerPageText="5"
+                  PageSizeSelectorItems="new int[] { 5, 10, 20 }"
+                  PaginationItemsTextFormat="{0} - {1} of {2} items">
+
+                <GridColumn TItem="BrandsQuantity" HeaderText="Brand name" PropertyName="BrandName" SortKeySelector="item => item.BrandName"
+                    Class="align-middle text-center">
+                    <div class="d-flex justify-content-center align-items-center">
+                        @context.BrandName
+                    </div>
+                </GridColumn>
+
+                <GridColumn TItem="BrandsQuantity" HeaderText="Total products quantity" PropertyName="Quantity" SortKeySelector="item => item.Quantity" 
+                    Class="align-middle text-center">
+                    <div class="d-flex justify-content-center align-items-center">
+                        @context.Quantity
+                    </div>
+                </GridColumn>
+            </Grid>
+        </div>
+    </div>
+</div> *@
+
+
+
+
+@code {
+    private IEnumerable<ProductsQuantity> ProductList = default!;
+    private IEnumerable<BrandsQuantity> BrandList = default!;
+
+    protected IEnumerable<ProductsQuantity> GetProductsQuantity()
+    {
+        List<ProductsQuantity> list = new List<ProductsQuantity>();
+        try
+        {
+            string SqlGetProducts = String.Format("SELECT c, quantity FROM products WHERE quantity <= 5 ORDER BY quantity ASC");
+            MySqlConnection conn = DBMySQL.GetMySqlConnection();
+            MySqlCommand cmd = conn.CreateCommand();
+            conn.Open();
+            cmd.CommandText = SqlGetProducts;
+            MySqlDataReader mySqlDataReader = cmd.ExecuteReader();
+            while(mySqlDataReader.Read())
+            {
+                string ProductName = mySqlDataReader.GetString("product_name");
+                int Quantity = mySqlDataReader.GetInt32("quantity");
+                ProductsQuantity ProductsQuantity = new ProductsQuantity(ProductName, Quantity);
+                list.Add(ProductsQuantity);
+            }
+            conn.Close();
+        } catch(Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
+
+        return list;
+    }
+
+    protected IEnumerable<BrandsQuantity> GetBrandsQuantity()
+    {
+        List<BrandsQuantity> list = new List<BrandsQuantity>();
+        try
+        {
+            string SqlGetBrands = String.Format("SELECT brands.brand_name as bname, sum(quantity) as squantity FROM products INNER JOIN brands ON products.brand_id = brands.brand_id GROUP BY brands.brand_id ORDER BY squantity DESC");
+            MySqlConnection conn = DBMySQL.GetMySqlConnection();
+            MySqlCommand cmd = conn.CreateCommand();
+            conn.Open();
+            cmd.CommandText = SqlGetBrands;
+            MySqlDataReader mySqlDataReader = cmd.ExecuteReader();
+            while (mySqlDataReader.Read())
+            {
+                string BrandName = mySqlDataReader.GetString("bname");
+                int Quantity = mySqlDataReader.GetInt32("squantity");
+                BrandsQuantity brandQuantity = new BrandsQuantity(BrandName, Quantity);
+                list.Add(brandQuantity);
+            }
+            conn.Close();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
+
+        return list;
+    }
+
+    protected override void OnInitialized()
+    {
+        ProductList =  GetProductsQuantity();
+        BrandList = GetBrandsQuantity();
+    }
+
+    private async Task<GridDataProviderResult<ProductsQuantity>> ProductsQuantityDataProvider(GridDataProviderRequest<ProductsQuantity> request)
+    {
+        if (ProductList is null) // pull employees only one time for client-side filtering, sorting, and paging
+            ProductList = GetProductsQuantity(); // call a service or an API to pull the employees
+
+        return await Task.FromResult(request.ApplyTo(ProductList));
+    }
+
+    private async Task<GridDataProviderResult<BrandsQuantity>> BrandsQuantityDataProvider(GridDataProviderRequest<BrandsQuantity> request)
+    {
+        if (BrandList is null) // pull employees only one time for client-side filtering, sorting, and paging
+            BrandList = GetBrandsQuantity(); // call a service or an API to pull the employees
+
+        return await Task.FromResult(request.ApplyTo(BrandList));
+    }
+
+}
+

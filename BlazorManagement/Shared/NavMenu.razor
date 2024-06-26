@@ -1,0 +1,27 @@
+﻿<div class="top-row pl-4 navbar navbar-dark">
+    <a class="navbar-brand" href="">BlazorManagement</a>
+</div>
+
+<div class="nav flex-column">
+    <a href="" class="nav-link active">
+        <span class="oi oi-home" aria-hidden="true"></span> Home
+    </a>
+    <a href="brands" class="nav-link">
+        <span class="oi oi-list-rich" aria-hidden="true"></span> Brands
+    </a>
+    <a href="products" class="nav-link">
+        <span class="oi oi-list-rich" aria-hidden="true"></span> Products
+    </a>
+</div>
+
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}
